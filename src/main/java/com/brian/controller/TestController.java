@@ -2,6 +2,7 @@ package com.brian.controller;
 
 import com.brian.controller.dto.TestDto;
 import com.brian.support.RequestScopeHolder;
+import com.brian.support.annotation.ValidateAll;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,7 @@ public class TestController {
 	}
 
 	@PostMapping
+	@ValidateAll
 	public void post(@Valid @RequestBody TestDto dto) {
 		System.out.println("RequestParam ==> "+dto.getUpdater());
 		System.out.println("requestScopeHolder ==> "+requestScopeHolder.getUpdater());

@@ -20,4 +20,14 @@ public class TestDto implements BaseDto {
 
 	@Valid
 	private List<TestDto> dtoList = new ArrayList<>();
+
+	@Override
+	public void validate() {
+		System.out.println("validate OK! - "+name);
+	}
+
+	@Override
+	public void validateAll() {
+		System.out.println("validate All OK! - "+name);
+	}
 }
