@@ -1,50 +1,93 @@
 package com.brian.support.util;
 
-import com.brian.controller.dto.BaseDto;
+import com.brian.support.annotation.NoCopy;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.FatalBeanException;
 import org.springframework.beans.PropertyAccessorFactory;
 import org.springframework.util.Assert;
 
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ObjectUtil {
 
-	public static <T> T copyFields(Object source, T dest) {
-		Assert.notNull(source, "source must not be null");
-		Assert.notNull(dest, "target must not be null");
+	/**
+	 * shallow copy properties
+	 *
+	 * target
+	 *  same name (even if type is not same)
+	 *  has getter/setter
+	 *
+	 * except
+	 *  null value
+	 *  has @NoCopy
+	 */
+	public static <T> T copyProperties(Object source, T target) throws BeansException {
+		Assert.notNull(source, "Source must not be null");
+		Assert.notNull(target, "Target must not be null");
 
-		List<Field> srcFieldList = Arrays.asList(source.getClass().getDeclaredFields())
-				.stream()
+		List<String> noCopyFields = getAllFields(source.getClass()).stream()
+				.filter(f -> f.getAnnotation(NoCopy.class) != null)
+				.map(Field::getName)
 				.collect(Collectors.toList());
 
-		Map<String,Field> destFieldMap = Arrays.asList(dest.getClass().getDeclaredFields())
-				.stream()
-				.collect(Collectors.toMap(Field::getName, Function.identity()));
+		PropertyDescriptor[] targetPds = Arrays.asList(BeanUtils.getPropertyDescriptors(target.getClass())).stream()
+				.filter(pd -> noCopyFields.contains(pd.getName()) == false)
+				.toArray(PropertyDescriptor[]::new);
 
-		BeanWrapper sourceWrapper = PropertyAccessorFactory.forBeanPropertyAccess(source);
-		BeanWrapper targetWrapper = PropertyAccessorFactory.forBeanPropertyAccess(dest);
+		BeanWrapper targetWrapper = PropertyAccessorFactory.forBeanPropertyAccess(target);
 
-		for (Field sf : srcFieldList) {
-			String fieldName = sf.getName();
-			Object value = sourceWrapper.getPropertyValue(fieldName);
+		for(PropertyDescriptor targetPd : targetPds) {
+			Method writeMethod = targetPd.getWriteMethod();
+			if (writeMethod != null) {
+				PropertyDescriptor sourcePd = BeanUtils.getPropertyDescriptor(source.getClass(), targetPd.getName());
+				if (sourcePd != null) {
+					Method readMethod = sourcePd.getReadMethod();
+					if (readMethod != null) {
+						try {
+							if (!Modifier.isPublic(readMethod.getDeclaringClass().getModifiers())) {
+								readMethod.setAccessible(true);
+							}
 
-			if (value == null || value instanceof Collection || value instanceof Map
-					|| value instanceof BaseDto) continue;
+							Object value = readMethod.invoke(source);
+							if (value == null) continue; // null 제외
 
-			if (destFieldMap.containsKey(fieldName)) {
-				// don't copy if type is not same
-//				if (sf.getType() != targetWrapper.getPropertyType(fieldName)) continue;
-
-				targetWrapper.setPropertyValue(fieldName, value);
+							targetWrapper.setPropertyValue(sourcePd.getName(), value);
+						} catch (Throwable t) {
+							throw new FatalBeanException("Could not copy property '" + targetPd.getName() + "' from source to target", t);
+						}
+					}
+				}
 			}
 		}
 
-		return dest;
+		return target;
+	}
+
+	/**
+	 * get all fields include inherited
+	 */
+	public static Collection<Field> getAllFields(Class<?> type) {
+		Map<String,Field> fieldMap = new HashMap<>();
+
+		while (type != Object.class) {
+			for (Field f : type.getDeclaredFields()) {
+				if (fieldMap.containsKey(f.getName())) continue;
+				fieldMap.put(f.getName(), f);
+			}
+			type = type.getSuperclass();
+		}
+
+		return fieldMap.values();
 	}
 }

@@ -6,6 +6,6 @@ import java.io.Serializable;
 
 public interface BaseModel extends Serializable {
 	default <T> T copyTo(T e) {
-		return ObjectUtil.copyFields(this, e);
+		return ObjectUtil.copyProperties(this, e);
 	}
 }
