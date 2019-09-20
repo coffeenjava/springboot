@@ -11,7 +11,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.function.Consumer;
 
-@JsonIgnoreProperties(value={ "creator", "updater", "createDate", "updateDate" }, allowGetters=true)
+@JsonIgnoreProperties(ignoreUnknown=true, value={ "creator", "updater", "createDate", "updateDate" }, allowGetters=true)
 public interface BaseDto extends BaseModel {
 
 	default void setCreator(String creator) {}
