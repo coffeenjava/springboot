@@ -1,6 +1,7 @@
 package com.brian.support.interceptor;
 
 import com.brian.controller.dto.BaseDto;
+import com.brian.support.util.ObjectUtil;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -8,29 +9,32 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAdapter;
 
 import java.lang.reflect.Type;
+import java.util.Collection;
 
+/**
+ * auto dto validation
+ */
 @ControllerAdvice
-public class CustomRequestBodyAdvice extends RequestBodyAdviceAdapter {
+public class DtoRequestBodyAdvice extends RequestBodyAdviceAdapter {
 
 	@Override
 	public boolean supports(MethodParameter methodParameter, Type type, Class<? extends HttpMessageConverter<?>> aClass) {
-		return BaseDto.class.isAssignableFrom(methodParameter.getParameterType());
+		/**
+		 * BaseDto or Collection<BaseDto>
+		 */
+		Class<?> cls = methodParameter.getParameterType();
+		if (Collection.class.isAssignableFrom(cls)) {
+			cls = ObjectUtil.getClassTypeFromCollection(type);
+		}
+		return BaseDto.class.isAssignableFrom(cls);
 	}
 
 	@Override public Object afterBodyRead(Object body, HttpInputMessage inputMessage, MethodParameter parameter, Type targetType,
 			Class<? extends HttpMessageConverter<?>> converterType) {
-		BaseDto dto = (BaseDto) body;
-		BaseDto.validate(dto, BaseDto::validate);
-
 		/**
-		 * validatedAll() processing moved to Aspect
-		 * @see com.brian.support.aop.DtoValidationAspect
+		 * run validate method in dto
 		 */
-//		AnnotatedElement annotatedElement = parameter.getAnnotatedElement();
-//		ValidateAll annValdate = annotatedElement.getAnnotation(ValidateAll.class);
-//		if (annValdate != null) {
-//			BaseDto.validate(dto, BaseDto::validateAll);
-//		}
+		BaseDto.validate(body);
 
 		return super.afterBodyRead(body, inputMessage, parameter, targetType, converterType);
 	}

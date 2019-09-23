@@ -12,6 +12,8 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -24,11 +26,11 @@ public class ObjectUtil {
 	/**
 	 * shallow copy properties
 	 *
-	 * target
+	 * include
 	 *  same name (even if type is not same)
 	 *  has getter/setter
 	 *
-	 * except
+	 * exclude
 	 *  null value
 	 *  has @NoCopy
 	 */
@@ -42,7 +44,7 @@ public class ObjectUtil {
 				.collect(Collectors.toList());
 
 		PropertyDescriptor[] targetPds = Arrays.asList(BeanUtils.getPropertyDescriptors(target.getClass())).stream()
-				.filter(pd -> noCopyFields.contains(pd.getName()) == false)
+				.filter(pd -> noCopyFields.contains(pd.getName()) == false) // exclude @NoCopy
 				.toArray(PropertyDescriptor[]::new);
 
 		BeanWrapper targetWrapper = PropertyAccessorFactory.forBeanPropertyAccess(target);
@@ -60,7 +62,7 @@ public class ObjectUtil {
 							}
 
 							Object value = readMethod.invoke(source);
-							if (value == null) continue; // null 제외
+							if (value == null) continue; // exclude null
 
 							targetWrapper.setPropertyValue(sourcePd.getName(), value);
 						} catch (Throwable t) {
@@ -89,5 +91,12 @@ public class ObjectUtil {
 		}
 
 		return fieldMap.values();
+	}
+
+	/**
+	 * get actual class type in collection
+	 */
+	public static Class<?> getClassTypeFromCollection(Type type) {
+		return (Class<?>) ((ParameterizedType) type).getActualTypeArguments()[0];
 	}
 }

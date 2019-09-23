@@ -15,8 +15,7 @@ public class DtoValidationAspect {
 		Object[] objects = joinPoint.getArgs();
 		if (objects.length > 0) {
 			for (Object o : objects) {
-				if (BaseDto.class.isAssignableFrom(o.getClass()) == false) continue;
-				BaseDto.validate((BaseDto) o, BaseDto::validateAll);
+				BaseDto.validate(o);
 			}
 		}
 
